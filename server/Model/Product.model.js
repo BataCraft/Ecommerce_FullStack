@@ -8,29 +8,20 @@ const productSchema = new mongoose.Schema({
         maxLength: [100, 'Product name cannot exceed 100 characters']
 
     },
-    slug: {
-        type: String,
-        required: [true, 'Product slug is required'],
-        unique: true
 
-    },
     category: {
         type: mongoose.Schema.ObjectId,
         ref: 'Category',
         required: true
     },
-    images: [
-        {
-            public_id: {
-                type: String,
-                required: true
-            },
-            url: {
-                type: String,
-                required: true
-            }
-        }
-    ],
+    images: [{
+        type: String,
+        required: false
+    }],
+    thumbnail: {
+        type: String,
+        required: false
+    },
 
     brand: {
         type: String,
@@ -84,7 +75,7 @@ const productSchema = new mongoose.Schema({
 
     ratings: {
         type: Number,
-        default: 0
+        default: 3.0
     },
     numOfReviews: {
         type: Number,

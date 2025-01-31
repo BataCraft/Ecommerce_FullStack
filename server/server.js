@@ -1,27 +1,57 @@
 const dotenv = require('dotenv');
+const express = require('express');
+const cookieParser = require("cookie-parser");
+const path = require('path');
+const fs = require('fs');
+const cors = require('cors');
+
+// Load environment variables
 dotenv.config();
 
+// Import database connection
 const connectDb = require('./config/Db');
 
-const express = require('express');
-
+// Initialize express
 const app = express();
-const cookieParser = require("cookie-parser");
 
+// Create temp directory
+const tempDir = path.join(__dirname, 'Public', 'temp');
+if (!fs.existsSync(tempDir)) {
+    fs.mkdirSync(tempDir, { recursive: true });
+}
 
-
-const AuthUser = require("./Routes/auth.routes")
-
-
-
-app.use(cookieParser());
+// Middleware
+app.use(cors());
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
 
-app.use("/api/auth", AuthUser);
+// Static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/public', express.static(path.join(__dirname, 'Public')));
 
+// Routes
+app.use("/api/auth", require("./Routes/auth.routes"));
+app.use("/api/category", require("./Routes/category.routes"));
+app.use("/api/product", require("./Routes/Product.routes"));
+
+// Connect to database
 connectDb();
 
-
-app.listen(process.env.PORT, ()=>{
+// Start server
+const server = app.listen(process.env.PORT, () => {
     console.log(`Server is running on port ${process.env.PORT}`);
-})
+});
+
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+    console.error('Unhandled Rejection:', err);
+    if (server) {
+        server.close(() => {
+            console.log('Server closed due to unhandled rejection');
+            process.exit(1);
+        });
+    } else {
+        process.exit(1);
+    }
+});

@@ -15,7 +15,7 @@ const getCookieOptions = () => ({
 });
 
 const registerUser = async (req, res) => {
-    const { email, name, password, phoneNumber } = req.body;
+    const { email, name, password, phoneNumber, role } = req.body;
 
     try {
         if (!email || !name || !password || !phoneNumber) {
@@ -33,11 +33,16 @@ const registerUser = async (req, res) => {
             });
         }
 
+        const validRoles = ['user', 'admin'];
+        const userRole = role && validRoles.includes(role) ? role : 'user';
+
+
         const user = new User({
             email,
             name,
             password,
-            phoneNumber
+            phoneNumber,
+            role
         });
 
         const verificationCode = user.generateVerificationCode();
@@ -330,14 +335,20 @@ const ResetPassword = async(req, res) => {
     const {token} = req.params;
     try {
 
-        const resetPasswordToken = crypto.createHash('sha256').update(token).digest('hex');
 
         const user = await User.findOne({
-            resetPasswordToken,
-            resetPasswordExpire: { $gt: Date.now() }
+            resetPasswordToken : token
+            
         });
 
         if(!user) {
+            return res.status(400).json({
+                success: false,
+                message: "User!"
+            });
+        };
+
+        if(user.resetPasswordExpire < Date.now()) {
             return res.status(400).json({
                 success: false,
                 message: "Password reset token is invalid or has expired"

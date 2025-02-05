@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  background: #ffffff;
+  font-family: var(--font-opensans);
+  outline: none;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-oswald); /* Use Oswald for headers */
+}
+
+@layer base {
+  :root {
+  
+    --font-opensans: sans-serif;
+    --font-oswald: sans-serif;
+  }
+}
+
+@layer utilities{
+      .flexJb{
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+
+      }
+
+      .normalflex{
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+}
+

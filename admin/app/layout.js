@@ -1,5 +1,7 @@
 import { Oswald, Open_Sans } from "next/font/google";
 import "./globals.css";
+import { ToastContainer, toast } from 'react-toastify';
+
 
 const opensans = Open_Sans({
   variable: "--font-opensans",
@@ -21,7 +23,7 @@ export default function RootLayout({ children }) {
       <body
         className={`${opensans.variable} ${oswald.variable} antialiased`}
         >
-
+            <ToastContainer />
       
         {children}
         

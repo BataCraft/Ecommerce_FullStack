@@ -21,7 +21,11 @@ if (!fs.existsSync(tempDir)) {
 }
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: ["http://localhost:3000", "http://192.168.0.4:3000"],
+    credentials: true 
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());

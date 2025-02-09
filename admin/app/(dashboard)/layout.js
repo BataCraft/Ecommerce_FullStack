@@ -7,6 +7,7 @@ const DashboardLayout = ({children})=>{
             <Slider/>
 
             <div className="flex-1 p-8">
+                
                 {children}
 
             </div>

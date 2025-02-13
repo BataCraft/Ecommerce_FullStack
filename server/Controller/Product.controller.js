@@ -10,23 +10,20 @@ const createProduct = async (req, res) => {
         console.log("Files received:", req.files); // Debug log
         console.log("Request data:", requestData); // Debug log
 
+        // Parse JSON strings from request body
+        const price = parseJsonOrDefault(requestData.price);
+        const stock = parseJsonOrDefault(requestData.stock);
+        const flags = parseJsonOrDefault(requestData.flags);
+
         const {
             name,
             categoryId,
             brand,
-            description,
-            regular,
-            sale,
-            quantity = "0",
-            specifications,
-            features,
-            isNew,
-            isFeatured,
-            isWeeklyDeal
+            description
         } = requestData;
 
         // Validate required fields
-        if (!name || !categoryId || !brand || !description || !regular || !quantity) {
+        if (!name || !categoryId || !brand || !description || !price.regular || !stock.quantity) {
             return res.status(400).json({
                 success: false,
                 message: "Please provide all required fields",
@@ -35,8 +32,8 @@ const createProduct = async (req, res) => {
                     categoryId: !categoryId,
                     brand: !brand,
                     description: !description,
-                    regular: !regular,
-                    quantity: !quantity
+                    regular: !price.regular,
+                    quantity: !stock.quantity
                 }
             });
         }
@@ -52,53 +49,63 @@ const createProduct = async (req, res) => {
 
         // Upload images to Cloudinary
         let uploadedImages = [];
-        if (req.files && req.files.length > 0) {
+        let thumbnailUrl = '';
+
+        // Handle thumbnail
+        if (req.files.thumbnail && req.files.thumbnail[0]) {
             try {
-                // Upload each image to Cloudinary
-                const uploadPromises = req.files.map(async (file) => {
+                thumbnailUrl = await uploadImage(req.files.thumbnail[0].path);
+                await fs.unlink(req.files.thumbnail[0].path);
+            } catch (error) {
+                console.error("Thumbnail upload error:", error);
+                throw new Error("Failed to upload thumbnail");
+            }
+        }
+
+        // Handle product images
+        if (req.files.images && req.files.images.length > 0) {
+            try {
+                const uploadPromises = req.files.images.map(async (file) => {
                     const result = await uploadImage(file.path);
-                    // Delete temporary file
                     await fs.unlink(file.path);
                     return result;
                 });
 
                 uploadedImages = await Promise.all(uploadPromises);
-                console.log("Uploaded images:", uploadedImages);
-            } catch (uploadError) {
-                console.error("Image upload error:", uploadError);
-                // Clean up any temporary files
-                await Promise.all(req.files.map(file => fs.unlink(file.path).catch(console.error)));
+            } catch (error) {
+                console.error("Image upload error:", error);
                 throw new Error("Failed to upload images");
             }
         }
 
-        // Create product data
+        // Create product data with current timestamp and user
         const productData = {
             name: name.trim(),
-            images: uploadedImages, // Add uploaded image URLs
+            thumbnail: thumbnailUrl,
+            images: uploadedImages,
             category: categoryId,
             brand: brand.trim(),
             price: {
-                regular: parseFloat(regular),
-                sale: sale ? parseFloat(sale) : null,
-                discount_percentage: sale ? 
-                    Math.round(((parseFloat(regular) - parseFloat(sale)) / parseFloat(regular)) * 100) : 0
+                regular: parseFloat(price.regular),
+                sale: price.sale ? parseFloat(price.sale) : null,
+                discount_percentage: price.sale ? 
+                    Math.round(((parseFloat(price.regular) - parseFloat(price.sale)) / parseFloat(price.regular)) * 100) : 0
             },
             stock: {
-                quantity: parseInt(quantity),
-                status: parseInt(quantity) === 0 ? 'out_of_stock' : 
-                        parseInt(quantity) < 10 ? 'low_stock' : 'in_stock'
+                quantity: parseInt(stock.quantity),
+                status: parseInt(stock.quantity) === 0 ? 'out_of_stock' : 
+                        parseInt(stock.quantity) < 10 ? 'low_stock' : 'in_stock'
             },
-            specifications: parseJsonOrDefault(specifications),
-            features: parseArrayOrDefault(features),
+            specifications: parseJsonOrDefault(requestData.specifications),
+            features: parseArrayOrDefault(requestData.features),
             description: description.trim(),
             flags: {
-                isNew: isNew === 'true' || isNew === true,
-                isFeatured: isFeatured === 'true' || isFeatured === true,
-                isWeeklyDeal: isWeeklyDeal === 'true' || isWeeklyDeal === true
+                isNew: flags.isNew === true,
+                isFeatured: flags.isFeatured === true,
+                isWeeklyDeal: flags.isWeeklyDeal === true
             },
-            createdBy: "BataCraft",
-            createdAt: "2025-01-31 07:01:26"
+            createdBy: "BataCraft", // Current user
+            createdAt: "2025-02-10 06:14:52" // Current UTC timestamp
         };
 
         const product = await Product.create(productData);
@@ -112,9 +119,16 @@ const createProduct = async (req, res) => {
     } catch (error) {
         // Clean up temporary files if they exist
         if (req.files) {
-            await Promise.all(req.files.map(file => 
-                fs.unlink(file.path).catch(console.error)
-            ));
+            if (req.files.thumbnail) {
+                await Promise.all(req.files.thumbnail.map(file => 
+                    fs.unlink(file.path).catch(console.error)
+                ));
+            }
+            if (req.files.images) {
+                await Promise.all(req.files.images.map(file => 
+                    fs.unlink(file.path).catch(console.error)
+                ));
+            }
         }
 
         console.error("Create Product Error:", error);
@@ -124,20 +138,25 @@ const createProduct = async (req, res) => {
         });
     }
 };
-
 // Update Product
 const updateProduct = async (req, res) => {
     try {
         const { id } = req.params;
         const requestData = req.body;
-        // console.log("Update Files:", req.files);
-        // console.log("Update Data:", requestData);
+        console.log("Update Files:", req.files);
+        console.log("Update Data:", requestData);
 
         // Find existing product
         const existingProduct = await Product.findById(id);
         if (!existingProduct) {
+            // Clean up any uploaded files
             if (req.files) {
-                await Promise.all(req.files.map(file => fs.unlink(file.path)));
+                if (req.files.thumbnail) {
+                    await Promise.all(req.files.thumbnail.map(file => fs.unlink(file.path)));
+                }
+                if (req.files.images) {
+                    await Promise.all(req.files.images.map(file => fs.unlink(file.path)));
+                }
             }
             return res.status(404).json({
                 success: false,
@@ -145,14 +164,31 @@ const updateProduct = async (req, res) => {
             });
         }
 
-        // Handle image uploads if new images are provided
-        let uploadedImages = existingProduct.images || []; // Keep existing images
-        if (req.files && req.files.length > 0) {
+        // Parse JSON strings from request body
+        const price = parseJsonOrDefault(requestData.price, existingProduct.price);
+        const stock = parseJsonOrDefault(requestData.stock, existingProduct.stock);
+        const flags = parseJsonOrDefault(requestData.flags, existingProduct.flags);
+        const specifications = parseJsonOrDefault(requestData.specifications, existingProduct.specifications);
+
+        // Handle thumbnail upload if new thumbnail is provided
+        let thumbnailUrl = existingProduct.thumbnail;
+        if (req.files?.thumbnail && req.files.thumbnail[0]) {
             try {
-                // Upload new images
-                const uploadPromises = req.files.map(async (file) => {
+                thumbnailUrl = await uploadImage(req.files.thumbnail[0].path);
+                await fs.unlink(req.files.thumbnail[0].path);
+            } catch (uploadError) {
+                console.error("Thumbnail upload error:", uploadError);
+                throw new Error("Failed to upload thumbnail");
+            }
+        }
+
+        // Handle image uploads if new images are provided
+        let uploadedImages = existingProduct.images || [];
+        if (req.files?.images && req.files.images.length > 0) {
+            try {
+                const uploadPromises = req.files.images.map(async (file) => {
                     const result = await uploadImage(file.path);
-                    await fs.unlink(file.path); // Clean up temp file
+                    await fs.unlink(file.path);
                     return result;
                 });
 
@@ -160,55 +196,52 @@ const updateProduct = async (req, res) => {
                 uploadedImages = [...uploadedImages, ...newImages];
             } catch (uploadError) {
                 console.error("Image upload error:", uploadError);
-                if (req.files) {
-                    await Promise.all(req.files.map(file => 
-                        fs.unlink(file.path).catch(err => console.error('Cleanup error:', err))
-                    ));
-                }
-                throw new Error("Failed to upload new images");
+                throw new Error("Failed to upload images");
             }
         }
 
         // Prepare update data
         const updateData = {
-            name: requestData.name?.trim(),
-            brand: requestData.brand?.trim(),
+            name: requestData.name?.trim() || existingProduct.name,
+            thumbnail: thumbnailUrl,
             images: uploadedImages,
-            description: requestData.description?.trim(),
+            brand: requestData.brand?.trim() || existingProduct.brand,
+            description: requestData.description?.trim() || existingProduct.description,
             price: {
-                ...existingProduct.price,
-                regular: requestData.regular ? parseFloat(requestData.regular) : existingProduct.price.regular,
-                sale: requestData.sale ? parseFloat(requestData.sale) : existingProduct.price.sale
+                regular: price.regular ? parseFloat(price.regular) : existingProduct.price.regular,
+                sale: price.sale ? parseFloat(price.sale) : existingProduct.price.sale,
+                discount_percentage: price.regular && price.sale ? 
+                    Math.round(((parseFloat(price.regular) - parseFloat(price.sale)) / parseFloat(price.regular)) * 100) : 
+                    existingProduct.price.discount_percentage
             },
             stock: {
-                quantity: requestData.quantity ? parseInt(requestData.quantity) : existingProduct.stock.quantity,
-                status: requestData.quantity ? 
-                    (parseInt(requestData.quantity) === 0 ? 'out_of_stock' : 
-                     parseInt(requestData.quantity) < 10 ? 'low_stock' : 'in_stock') :
+                quantity: stock.quantity ? parseInt(stock.quantity) : existingProduct.stock.quantity,
+                status: stock.quantity ? 
+                    (parseInt(stock.quantity) === 0 ? 'out_of_stock' : 
+                     parseInt(stock.quantity) < 10 ? 'low_stock' : 'in_stock') :
                     existingProduct.stock.status
             },
-            specifications: requestData.specifications ? 
-                JSON.parse(requestData.specifications) : 
-                existingProduct.specifications,
-            features: requestData.features ? 
-                (typeof requestData.features === 'string' ? 
-                    requestData.features.split(',').map(f => f.trim()) : 
-                    requestData.features) : 
-                existingProduct.features,
+            specifications: specifications,
+            features: parseArrayOrDefault(requestData.features, existingProduct.features),
             flags: {
-                isNew: requestData.isNew === 'true' || requestData.isNew === true,
-                isFeatured: requestData.isFeatured === 'true' || requestData.isFeatured === true,
-                isWeeklyDeal: requestData.isWeeklyDeal === 'true' || requestData.isWeeklyDeal === true
+                isNew: flags.isNew ?? existingProduct.flags.isNew,
+                isFeatured: flags.isFeatured ?? existingProduct.flags.isFeatured,
+                isWeeklyDeal: flags.isWeeklyDeal ?? existingProduct.flags.isWeeklyDeal
             },
-            updatedBy: "BataCraft",
-            updatedAt: "2025-01-31 07:18:11"
+            updatedBy: "BataCraft", // Current user
+            updatedAt: "2025-02-10 06:16:56" // Current UTC timestamp
         };
 
-        // Calculate discount percentage if both regular and sale prices are provided
-        if (updateData.price.regular && updateData.price.sale) {
-            updateData.price.discount_percentage = Math.round(
-                ((updateData.price.regular - updateData.price.sale) / updateData.price.regular) * 100
-            );
+        // If category is being updated, verify it exists
+        if (requestData.categoryId) {
+            const existingCategory = await Category.findById(requestData.categoryId);
+            if (!existingCategory) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Category not found"
+                });
+            }
+            updateData.category = requestData.categoryId;
         }
 
         // Update product
@@ -216,7 +249,7 @@ const updateProduct = async (req, res) => {
             id,
             { $set: updateData },
             { new: true, runValidators: true }
-        );
+        ).populate('category', 'name');
 
         res.status(200).json({
             success: true,
@@ -225,6 +258,20 @@ const updateProduct = async (req, res) => {
         });
 
     } catch (error) {
+        // Clean up any temporary files
+        if (req.files) {
+            if (req.files.thumbnail) {
+                await Promise.all(req.files.thumbnail.map(file => 
+                    fs.unlink(file.path).catch(err => console.error('Cleanup error:', err))
+                ));
+            }
+            if (req.files.images) {
+                await Promise.all(req.files.images.map(file => 
+                    fs.unlink(file.path).catch(err => console.error('Cleanup error:', err))
+                ));
+            }
+        }
+
         console.error("Update Product Error:", error);
         return res.status(500).json({
             success: false,

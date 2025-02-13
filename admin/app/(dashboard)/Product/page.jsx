@@ -16,7 +16,7 @@ const Product = () => {
         fetchProduct();
     }, [fetchProduct]);
 
-    // console.log(fetchProduct);
+    console.log(fetchProduct);
 
 
     if (loading) {
@@ -101,10 +101,11 @@ const Product = () => {
                                         </td>
                                         <td className="px-6 py-4 text-sm text-gray-900">
                                             <div className="flex space-x-3">
-                                                <button className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-semibold text-blue-600 hover:bg-blue-100 hover:text-blue-700">
+                                                <Link  href={`/edit-product/${product._id}`} className="inline-flex items-center rounded-md bg-blue-50 px-2 py-1 text-sm font-semibold text-blue-600 hover:bg-blue-100 hover:text-blue-700">
                                                     <Pencil className="mr-1 h-4 w-4" />
                                                     Edit
-                                                </button>
+                                                </Link>
+
                                                 <button className="inline-flex items-center rounded-md bg-red-50 px-2 py-1 text-sm font-semibold text-red-600 hover:bg-red-100 hover:text-red-700">
                                                     <Trash2 className="mr-1 h-4 w-4" />
                                                     Delete

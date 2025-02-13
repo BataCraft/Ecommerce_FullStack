@@ -18,10 +18,19 @@ const useAuthStore = create((set) => ({
 
             if (response.status === 200) {
                 const { user, token } = response.data;
+
+                if(user.role !== "admin") {
+                    set({ user: null, token: null, loading: false, error: "You are not an admin" });
+                    return null;
+                };
+
+
                 set({ user, token, loading: false });
                 localStorage.setItem("token", token);
                 return true;
-            }
+            };
+
+ 
         } catch (error) {
             set({
                 loading: false,
@@ -51,9 +60,19 @@ const useAuthStore = create((set) => ({
             );
 
             if (response.status === 200) {
+                const user = response.data.user;
+
+                if(user.role !== "admin") {
+                    set({ user: null, token: null, loading: false, error: "You are not an admin" });
+                    return null;
+                };
+                
                 set({ user: response.data.user, token });
                 return response.data.user;
-            }
+            };
+
+         
+           
         } catch (error) {
             set({
                 loading: false,

@@ -1,24 +1,40 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs').promises;
+
+// Ensure temp directory exists
+const ensureTempDir = async () => {
+    const tempDir = './Public/temp';
+    try {
+        await fs.access(tempDir);
+    } catch {
+        await fs.mkdir(tempDir, { recursive: true });
+    }
+};
 
 // Configure storage
 const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-        cb(null, './Public/temp'); // Temporary storage
+    destination: async function (req, file, cb) {
+        await ensureTempDir();
+        cb(null, './Public/temp');
     },
     filename: function (req, file, cb) {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${file.fieldname}-${uniqueSuffix}${ext}`);
     }
 });
 
 // File filter
 const fileFilter = (req, file, cb) => {
-    if (file.mimetype.startsWith('image/')) {
-        cb(null, true);
-    } else {
-        cb(new Error('Not an image! Please upload only images.'), false);
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    
+    if (!allowedTypes.includes(file.mimetype)) {
+        const error = new Error('Invalid file type. Only JPEG, PNG, GIF, and WebP images are allowed.');
+        error.code = 'INVALID_FILE_TYPE';
+        return cb(error, false);
     }
+    cb(null, true);
 };
 
 // Configure multer
@@ -26,8 +42,8 @@ const upload = multer({
     storage: storage,
     fileFilter: fileFilter,
     limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-        files: 5 // Maximum 5 files
+        fileSize: 25 * 1024 * 1024, // 25MB
+        files: 6 // Increased to 6 to accommodate 1 thumbnail + 5 images
     }
 });
 

@@ -14,6 +14,9 @@ const Signin = () => {
     const router = useRouter();
     const [authLoading, setAuthLoading] = useState(true); // ✅ Prevents redirect before auth check
 
+    // console.log(user.role);
+    
+
     // ✅ Restore authentication on page load
     useEffect(() => {
         const verifyAuth = async () => {
@@ -25,7 +28,7 @@ const Signin = () => {
 
     // ✅ Redirect authenticated users after auth check
     useEffect(() => {
-        if (!authLoading && user) {
+        if (!authLoading && user ) {
             router.push("/dashboard");
         }
     }, [user, authLoading, router]);

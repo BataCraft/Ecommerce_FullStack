@@ -6,8 +6,14 @@ const upload = require('../MiddlerWare/milter.midlerware');
 const route = express.Router();
 
 
-route.post('/create-product',  isAuthUser, authorizeRoles('admin'),  upload.array('images', 5), createProduct);
-route.put('/update-product/:id', isAuthUser, authorizeRoles('admin'),  updateProduct);
+route.post('/create-product',  isAuthUser, authorizeRoles('admin'),  upload.fields([
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'images', maxCount: 5 }
+]), createProduct);
+route.put('/update-product/:id', isAuthUser, authorizeRoles('admin'), upload.fields([
+    { name: 'thumbnail', maxCount: 1 },
+    { name: 'images', maxCount: 5 }
+]),  updateProduct);
 route.delete('/delete-product/:id', isAuthUser, authorizeRoles('admin'), DeleteProduct);
 route.get('/get-product', GetAllProduct);
 route.get('/get-product/:id', GetProductById);

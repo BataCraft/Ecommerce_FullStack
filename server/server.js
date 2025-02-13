@@ -22,7 +22,7 @@ if (!fs.existsSync(tempDir)) {
 
 // Middleware
 app.use(cors({
-    origin: ["http://localhost:3000", "http://192.168.0.4:3000"],
+    origin: ["http://localhost:3000", "http://192.168.0.4:3000", "http://localhost:3001"],
     credentials: true 
 }));
 
@@ -38,6 +38,7 @@ app.use('/public', express.static(path.join(__dirname, 'Public')));
 app.use("/api/auth", require("./Routes/auth.routes"));
 app.use("/api/category", require("./Routes/category.routes"));
 app.use("/api/product", require("./Routes/Product.routes"));
+app.use("/api/order", require("./Routes/Order.routes"));
 
 // Connect to database
 connectDb();
